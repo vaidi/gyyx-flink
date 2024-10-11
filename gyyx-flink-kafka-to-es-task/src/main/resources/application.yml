@@ -1,0 +1,24 @@
+server:
+  port: 8089
+spring:
+  main:
+    web-application-type: none
+  application:
+    name: gd-kafka-to-es-job
+
+# 日志配置
+logging:
+  level:
+    root: info  # 设置根日志级别为info
+    # 也可以为特定包或类设置日志级别，例如：
+    # com.example: debug
+  file:
+    name: /data/logs/${spring.application.name}/common/info.log  # 设置日志文件路径和名称
+  pattern:
+    file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'  # 设置日志文件的输出格式
+  logback:
+    rollingpolicy:
+      file-name-pattern: /data/logs/${spring.application.name}/common/info-%i.log  # 设置滚动日志文件的命名模式
+      max-file-size: 10MB  # 设置每个日志文件的最大大小，默认为10MB
+      total-size-cap: 1GB  # 设置要保留的日志文件的总大小上限
+      max-history: 30  # 设置要保留的滚动日志文件的最大天数或版本数

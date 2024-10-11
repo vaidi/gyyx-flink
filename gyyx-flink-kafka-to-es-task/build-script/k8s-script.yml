@@ -1,0 +1,61 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  namespace: ${NAMESPACE}
+  name: ${SERVICE_NAME}
+spec:
+  image: repo.gydev.cn:8082/${NAMESPACE}/${SERVICE_NAME}:${PROJECT_VERSION}
+  flinkVersion: v1_17
+  ingress:
+    template: "{{name}}.{{namespace}}.gd-flink.gyyx.cn"
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    state.savepoints.dir: file:///flink-data/${SERVICE_NAME}/savepoints
+    state.checkpoints.dir: file:///flink-data/${SERVICE_NAME}/checkpoints
+    high-availability: org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory
+    high-availability.storageDir: file:///flink-data/${SERVICE_NAME}/ha
+    execution.checkpointing.interval: "60000"  # 每60秒创建一次checkpoint
+    execution.checkpointing.min-pause: "30000"  # Checkpoint之间最小间隔为30秒
+    execution.checkpointing.timeout: "900000"   # 每个checkpoint超时为15分钟
+    execution.checkpointing.max-concurrent-checkpoints: "1"  # 同时只允许一个checkpoint
+    state.backend.incremental: "true"  # 启用增量checkpoint
+    state.backend: rocksdb #开启rockdb
+    state.rocksdb.dir: file:///flink-data/${SERVICE_NAME}/rocksdb
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: "768m"
+      cpu: 0.5
+  taskManager:
+    resource:
+      memory: "2048m"
+      cpu: 1
+  podTemplate:
+    spec:
+      volumes:
+        - name: flink-pv-storage
+          persistentVolumeClaim:
+            claimName: nfs-pvc     # flink-pv-volume
+        - name: log-storage
+          emptyDir: {}
+      containers:
+        - name: flink-main-container
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+            - name: FLINK_ENV_JAVA_OPTS
+              value: "-XX:+UseG1GC -Xmx888m -Xms888m -XX:MaxDirectMemorySize=412m"
+          volumeMounts:
+            - mountPath: /flink-data
+              name: flink-pv-storage
+            - mountPath: /data/logs
+              name: log-storage
+  #            - mountPath: /flink-data/logs
+  #                name: flink-logs-volume
+  #            - mountPath: /etc/log4j2
+  #                name: log4j2-config-volume
+  job:
+    jarURI: local:///data/program.jar
+    parallelism: 2
+    # upgradeMode: savepoint  # 保持状态升级savepoint
+    state: running
